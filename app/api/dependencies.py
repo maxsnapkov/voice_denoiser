@@ -137,10 +137,12 @@ async def process_audio_file(
         kwargs = {}
         if method == "bandpass":
             kwargs["voice_type"] = voice_type
+            
         
         # Обработка
         result = denoiser.denoise(
             file_path,
+            sr=sample_rate,
             method=method,
             **kwargs
         )

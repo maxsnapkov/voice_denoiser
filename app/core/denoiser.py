@@ -28,15 +28,15 @@ class Denoiser:
     
     # Диапазоны частот для полосовой фильтрации (Гц)
     SPEECH_FREQ_RANGES = {
-        'male': (80, 8000),      # Мужской голос
-        'female': (100, 10000),  # Женский голос
-        'broadband': (50, 12000) # Широкополосный
+        'male': (80, 3000),      # Мужской голос
+        'female': (100, 8000),  # Женский голос
+        'broadband': (0, 16000) # Широкополосный
     }
     
     def __init__(
         self,
         default_method: str = METHOD_ADAPTIVE,
-        target_sr: int = 16000,
+        target_sr: int = 22050,
         verbose: bool = False
     ):
         """
@@ -76,7 +76,7 @@ class Denoiser:
                 'hop_length': 512
             },
             self.METHOD_ADAPTIVE: {
-                'initial_method': self.METHOD_BANDPASS,
+                'initial_method': self.METHOD_SPECTRAL_SUBTRACTION,
                 'fallback_method': self.METHOD_NOISEREDUCE
             }
         }
@@ -122,11 +122,17 @@ class Denoiser:
         else:
             audio_data = audio
             orig_sr = sr or self.target_sr
-            
-            # Ресемплируем, если нужно
-            if orig_sr != self.target_sr:
-                audio_data = AudioIO.resample_audio(audio_data, orig_sr, self.target_sr)
-                orig_sr = self.target_sr
+            try:
+                # Ресемплируем, если нужно
+                if sr is not None and orig_sr != sr:
+                    audio_data = AudioIO.resample_audio(audio_data, orig_sr, sr)
+                    orig_sr = sr
+
+                elif orig_sr != self.target_sr:
+                    audio_data = AudioIO.resample_audio(audio_data, orig_sr, self.target_sr)
+                    orig_sr = self.target_sr
+            except Exception as e:
+                print(e)
         
         # Сохраняем оригинальную форму
         original_shape = audio_data.shape
@@ -151,10 +157,11 @@ class Denoiser:
             raise ValueError(f"Неизвестный метод: {method}")
         
         # Нормализуем результат
-        denoised_audio = AudioIO.normalize_audio(denoised_audio)
+        if method != self.METHOD_ADAPTIVE and method != self.METHOD_BANDPASS:
+            denoised_audio = AudioIO.normalize_audio(denoised_audio)
         
-        # Обрезаем тишину
-        denoised_audio = AudioIO.trim_silence(denoised_audio, orig_sr)
+            # Обрезаем тишину
+            denoised_audio = AudioIO.trim_silence(denoised_audio, orig_sr)
         
         # Вычисляем метрики
         processing_time = time.time() - start_time
@@ -175,8 +182,8 @@ class Denoiser:
         self,
         audio: np.ndarray,
         sr: int,
-        lowcut: Optional[float] = None,
-        highcut: Optional[float] = None,
+        lowcut: Optional[float] = 80,
+        highcut: Optional[float] = 8000,
         order: int = 5,
         voice_type: str = 'broadband'
     ) -> np.ndarray:
@@ -211,7 +218,7 @@ class Denoiser:
         # Нормализация частот
         low = lowcut / nyquist
         high = highcut / nyquist
-        
+
         # Создание фильтра Баттерворта
         b, a = signal.butter(order, [low, high], btype='band')
         
@@ -219,15 +226,35 @@ class Denoiser:
         audio_filtered = signal.filtfilt(b, a, audio)
         
         # Дополнительно: применямем notch фильтр для удаления сетевой частоты (50 Гц)
-        if 45 <= lowcut <= 55 or 45 <= highcut <= 55:
-            # Пропускаем, чтобы не удалять речевые частоты
-            pass
-        else:
-            # Удаляем сетевую частоту, если она не в речевом диапазоне
-            audio_filtered = self._notch_filter(audio_filtered, sr, freq=50.0, Q=30.0)
+        #if 45 <= lowcut <= 55 or 45 <= highcut <= 55:
+        #    # Пропускаем, чтобы не удалять речевые частоты
+        #    pass
+        #else:
+        #    # Удаляем сетевую частоту, если она не в речевом диапазоне
+        #    audio_filtered = self._notch_filter(audio_filtered, sr, freq=50.0, Q=30.0)
         
+        
+        # Добавляем плавное нарастание/затухание для избежания щелчков
+        #fade_samples = int(0.01 * sr)  # 10 мс
+        #audio_filtered = self._apply_fade(audio_filtered, fade_samples)
+
         return audio_filtered
     
+    def _apply_fade(self, audio: np.ndarray, fade_samples: int) -> np.ndarray:
+        """Применяет плавное нарастание и затухание к аудио."""
+        if len(audio) < 2 * fade_samples:
+            return audio
+        
+        # Создаем оконную функцию для фейда
+        fade_in = np.linspace(0, 1, fade_samples)
+        fade_out = np.linspace(1, 0, fade_samples)
+        
+        # Применяем фейд
+        audio[:fade_samples] *= fade_in
+        audio[-fade_samples:] *= fade_out
+        
+        return audio
+
     def _notch_filter(
         self,
         audio: np.ndarray,
@@ -414,7 +441,8 @@ class Denoiser:
             Очищенный аудиосигнал
         """
         # 1. Сначала полосовая фильтрация для удаления внеполосных шумов
-        audio_stage1 = self._bandpass_filter(audio, sr, voice_type='broadband')
+        #audio_stage1 = self._bandpass_filter(audio, sr, voice_type='broadband')
+        audio_stage1 = audio
         
         # 2. Оценка уровня шума
         noise_level = self._estimate_noise_level(audio_stage1)
@@ -427,14 +455,14 @@ class Denoiser:
             # Только полосовая фильтрация
             return audio_stage1
         
-        elif noise_level < 0.15:  # Средний уровень шума
+        elif noise_level < 0.2:  # Средний уровень шума
             # Добавляем спектральное вычитание
             audio_stage2 = self._spectral_subtraction(audio_stage1, sr)
             return audio_stage2
         
         else:  # Высокий уровень шума
             # Используем noisereduce
-            audio_stage2 = self._spectral_subtraction(audio_stage1, sr)
+            #audio_stage2 = self._spectral_subtraction(audio_stage1, sr)
             audio_stage3 = self._noisereduce_filter(audio_stage2, sr)
             return audio_stage3
     

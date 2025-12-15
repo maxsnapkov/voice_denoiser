@@ -56,7 +56,7 @@ class AudioIO:
                 audio, sr_orig = librosa.load(filepath, sr=sr, mono=mono, duration=duration)
             
             # Нормализация амплитуды
-            audio = AudioIO.normalize_audio(audio)
+            # audio = AudioIO.normalize_audio(audio)
             
             return audio, sr_orig if sr is None else sr
             
@@ -125,6 +125,17 @@ class AudioIO:
             
             # Ограничиваем значения для избежания клиппинга
             audio_normalized = np.clip(audio_normalized, -1.0, 1.0)
+            
+            # Используем мягкое ограничение для избежания резких искажений
+            #threshold = 0.95
+            #audio_normalized = np.where(
+            #    np.abs(audio_normalized) > threshold,
+            #    np.sign(audio_normalized) * (threshold + (1-threshold) * np.tanh((np.abs(audio_normalized)-threshold)/(1-threshold))),
+            #    audio_normalized
+            #)
+            
+            # Дополнительно: сжимаем динамический диапазон для гладкости
+            #audio_normalized = np.tanh(audio_normalized * 0.8) * 1.2
             
             return audio_normalized
         
