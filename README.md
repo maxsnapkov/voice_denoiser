@@ -129,6 +129,41 @@ if response.status_code == 200:
     print(f"Обработано: {result['filename']}")
 ```
 
+## 🔧 Консольное приложение
+
+```bash
+usage: python scripts/demo_cli.py [-h] [--method {bandpass,spectral_subtraction,wiener,noisereduce,adaptive}]
+                                  [--voice-type {male,female,broadband}] [--sample-rate SAMPLE_RATE] [--plot] 
+                                  [--compare] [--verbose] [--list-methods] [--version]
+                                  input output
+
+Очистка аудиофайлов от шума
+
+positional arguments:
+  input                 Путь к входному аудиофайлу
+  output                Путь для сохранения очищенного файла
+
+options:
+  -h, --help            show this help message and exit
+  --method {bandpass,spectral_subtraction,wiener,noisereduce,adaptive}, -m {bandpass,spectral_subtraction,wiener,noisereduce,adaptive}
+                        Метод очистки (по умолчанию: noisereduce)
+  --voice-type {male,female,broadband}, -vt {male,female,broadband}
+                        Тип голоса для полосовой фильтрации
+  --sample-rate SAMPLE_RATE, -sr SAMPLE_RATE
+                        Целевая частота дискретизации (по умолчанию: 16000)
+  --plot, -p            Показать графики до/после обработки
+  --compare, -c         Сохранить сравнение (исходный + очищенный в один файл)
+  --verbose, -v         Подробный вывод
+  --list-methods        Показать список доступных методов и выйти
+  --version             Показать версию и выйти
+
+Примеры использования:
+  python scripts/demo_cli.py input.wav output.wav
+  python scripts/demo_cli.py input.wav output.wav --method bandpass
+  python scripts/demo_cli.py input.wav output.wav --method noisereduce --verbose
+  python scripts/demo_cli.py input.wav output.wav --voice-type female --plot
+```
+
 ## 📁 Структура проекта
 
 ```
