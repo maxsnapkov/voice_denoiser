@@ -108,6 +108,7 @@ async def denoise_audio(
     
     # Формируем ответ
     audio_info = schemas.AudioInfo(**original_info)
+    audio_info.sample_rate = result['sample_rate']
     
     return schemas.DenoiseResponse(
         request_id=request_id,

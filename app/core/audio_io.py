@@ -61,7 +61,8 @@ class AudioIO:
             return audio, sr_orig if sr is None else sr
             
         except Exception as e:
-            raise ValueError(f"Ошибка загрузки аудио: {str(e)}")
+            print(e)
+            raise ValueError(f"Ошибка загрузки аудио: {e}")
     
     @staticmethod
     def save_audio(
@@ -161,13 +162,19 @@ class AudioIO:
         filepath = Path(filepath)
         
         # Используем soundfile для получения информации
-        info = sf.info(filepath)
-        
+        signal, sample_rate = librosa.load(filepath, sr=None, mono=False)
         # Основные характеристики
-        duration = info.duration
-        sr = info.samplerate
-        channels = info.channels
-        frames = info.frames
+        duration = round(len(signal) / sample_rate)
+        sr = sample_rate
+        if signal.ndim == 1:
+            channels = 1
+            total_samples = len(signal)
+        else:
+            channels = signal.shape[0]
+            total_samples = signal.shape[1]
+
+        hop_length = 512
+        frames = total_samples // hop_length + 1
         
         # Статистики (загружаем для расчета)
         audio, _ = AudioIO.load_audio(filepath, sr=None, mono=False)
@@ -184,8 +191,7 @@ class AudioIO:
             'sample_rate': sr,
             'channels': channels,
             'frames': frames,
-            'format': info.format,
-            'bit_depth': info.subtype,
+            'format': filepath.suffix[1:],
             'max_amplitude': float(np.max(np.abs(audio_mono))),
             'mean_amplitude': float(np.mean(np.abs(audio_mono))),
             'rms': float(np.sqrt(np.mean(audio_mono ** 2))),

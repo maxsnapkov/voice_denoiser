@@ -359,7 +359,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         print(data)
         if data.startswith("method_"):
             # Выбор метода очистки
-            method = data.split("_")[1]
+            method = data.replace('method_', '')
             user_state = get_user_state(user_id)
             user_state["settings"]["method"] = method
             

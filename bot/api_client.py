@@ -80,7 +80,7 @@ class APIClient:
         filename: str,
         method: str = "noisereduce",
         sample_rate: Optional[int] = None,
-        voice_type: str = "broadband"
+        voice_type: Optional[str] = "broadband"
     ) -> Dict[str, Any]:
         """
         Отправляет аудио на очистку.
@@ -104,6 +104,7 @@ class APIClient:
             content_type="audio/wav"
         )
         data.add_field("method", method)
+        logger.info(method)
         
         if sample_rate:
             data.add_field("sample_rate", str(sample_rate))

@@ -9,7 +9,7 @@ from pathlib import Path
 # Добавляем путь к core
 sys.path.insert(0, str(Path(__file__).parent))
 
-from core import AudioIO, Denoiser, create_denoiser
+from app.core import AudioIO, Denoiser, create_denoiser
 import numpy as np
 import tempfile
 
@@ -111,7 +111,7 @@ def test_integration():
         AudioIO.save_audio(test_audio, input_path, sr=sr)
         
         # Обрабатываем
-        from core import denoise_file
+        from app.core import denoise_file
         result = denoise_file(input_path, output_path, method="bandpass")
         
         # Проверяем

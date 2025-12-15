@@ -20,7 +20,7 @@ class Denoiser:
     """
     
     # Константы для методов
-    METHOD_BANDPASS = "bandpass"  # Полосовая фильтрация (лучший по тестам)
+    METHOD_BANDPASS = "bandpass"  # Полосовая фильтрация
     METHOD_SPECTRAL_SUBTRACTION = "spectral_subtraction"
     METHOD_WIENER = "wiener"
     METHOD_NOISEREDUCE = "noisereduce"

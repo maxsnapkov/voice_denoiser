@@ -3,7 +3,7 @@ Pydantic схемы для API.
 """
 
 from pydantic import BaseModel, Field, validator
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from enum import Enum
 from datetime import datetime
 
@@ -21,7 +21,7 @@ class AudioInfo(BaseModel):
     """Информация об аудиофайле."""
     filename: str
     duration: float = Field(..., description="Длительность в секундах")
-    sample_rate: int = Field(..., description="Частота дискретизации")
+    sample_rate: Union[int, str] = Field(..., description="Частота дискретизации")
     channels: int = Field(..., description="Количество каналов")
     size_bytes: int = Field(..., description="Размер файла в байтах")
     format: str = Field(..., description="Формат файла")
